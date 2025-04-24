@@ -16,3 +16,4 @@ pnpm-debug.log*
 
 # Optional: If you have a .modified file
 .modified
+.vercel
