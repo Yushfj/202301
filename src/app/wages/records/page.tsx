@@ -362,46 +362,6 @@ const WagesRecordsPage = () => {
             </AlertDialog>
           </div>
 
-          {/* Wage Chart */}
-          <div className="w-full mb-8">
-            <h3 className="text-xl text-center mb-2 text-white">Net Pay Trend for All Employees</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={allEmployeeData}
-                margin={{top: 5, right: 30, left: 20, bottom: 5}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#fff" opacity={0.3}/>
-                <XAxis dataKey="payWeek" stroke="#fff" tick={{fontSize: 12}}/>
-                <YAxis stroke="#fff" tickFormatter={(value) => `$${value}`} tick={{fontSize: 12}}/>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#222', border: 'none', borderRadius: '8px' }}
-                  itemStyle={{ color: '#fff' }}
-                  formatter={(value) => `$${value}`}
-                  labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                  labelFormatter={(value, name, props) => {
-                    const dataPoint = allEmployeeData.find(item => item.payWeek === value);
-                    return `${value} (${dataPoint?.employeeName || 'Unknown'})`;
-                  }}
-                />
-                <Legend wrapperStyle={{ color: '#fff', fontSize: '14px' }} iconType="circle"/>
-                {employees.map(employee => (
-                  <Line
-                    key={employee.id}
-                    type="monotone"
-                    dataKey="netPay"
-                    stroke={getEmployeeColor(employee.id)} // Use the function to get the stroke color
-                    strokeWidth={3}
-                    dot={true}
-                    connectNulls={true}
-                    name={employee.name}
-                    data={allEmployeeData.filter(item => item.employeeName === employee.name)}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          {allEmployeeData.length === 0 && (
-            <p className="text-white text-center">No wage data available for the selected date range to display the chart.</p>
-          )}
-
           <Table>
             <TableHeader>
               <TableRow>

@@ -7,7 +7,6 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import Image from 'next/image';
 import {useToast} from '@/hooks/use-toast';
-import {v4 as uuidv4} from 'uuid';
 import {useRouter} from 'next/navigation';
 import {addEmployee} from '@/services/employee-service';
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group';
@@ -61,7 +60,7 @@ const CreateEmployeePage = () => {
 
     try {
       const newEmployee: Employee = {
-        id: uuidv4(),
+        id: '',
         name,
         position,
         hourlyWage,

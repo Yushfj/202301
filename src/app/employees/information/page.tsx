@@ -20,6 +20,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import Link from 'next/link';
+import {getEmployees} from '@/services/employee-service';
 
 interface Employee {
   id: string;
@@ -41,33 +42,22 @@ const EmployeeInformationPage = () => {
 
   useEffect(() => {
     // Retrieve employees from local storage on component mount
-    const storedEmployees = localStorage.getItem('employees');
-    if (storedEmployees) {
-      setEmployees(JSON.parse(storedEmployees));
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const employeeData = await getEmployees();
+      setEmployees(employeeData);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to fetch employees.',
+        variant: 'destructive',
+      });
     }
-  }, []);
+  };
 
-  // Update employees state whenever local storage changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const storedEmployees = localStorage.getItem('employees');
-      if (storedEmployees) {
-        setEmployees(JSON.parse(storedEmployees));
-      } else {
-        setEmployees([]);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  // Filter employees by branch
-  const labasaEmployees = employees.filter(employee => employee.branch === 'labasa');
-  const suvaEmployees = employees.filter(employee => employee.branch === 'suva');
 
   const handleDeleteEmployee = (employeeId: string) => {
     if (deletePassword !== ADMIN_PASSWORD) {
@@ -78,8 +68,8 @@ const EmployeeInformationPage = () => {
       });
       return;
     }
-    const updatedEmployees = employees.filter(employee => employee.id !== employeeId);
-    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
+    // const updatedEmployees = employees.filter(employee => employee.id !== employeeId);
+    // localStorage.setItem('employees', JSON.stringify(updatedEmployees));
     toast({
       title: 'Success',
       description: 'Employee deleted successfully!',
@@ -111,11 +101,11 @@ const EmployeeInformationPage = () => {
         <CardContent>
           {/* Labasa Branch Employees */}
           <h2 className="text-xl text-white mb-2">Labasa Branch</h2>
-          {labasaEmployees.length === 0 ? (
+          {employees.filter(employee => employee.branch === 'labasa').length === 0 ? (
             <p className="text-white text-center">No employee information available for Labasa Branch.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {labasaEmployees.map((employee, index) => (
+              {employees.filter(employee => employee.branch === 'labasa').map((employee, index) => (
                 <div
                   key={index}
                   className="bg-secondary/70 rounded-lg p-4 text-white shadow-md relative"
@@ -188,11 +178,11 @@ const EmployeeInformationPage = () => {
 
           {/* Suva Branch Employees */}
           <h2 className="text-xl text-white mb-2 mt-4">Suva Branch</h2>
-          {suvaEmployees.length === 0 ? (
+          {employees.filter(employee => employee.branch === 'suva').length === 0 ? (
             <p className="text-white text-center">No employee information available for Suva Branch.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {suvaEmployees.map((employee, index) => (
+              {employees.filter(employee => employee.branch === 'suva').map((employee, index) => (
                 <div
                   key={index}
                   className="bg-secondary/70 rounded-lg p-4 text-white shadow-md relative"

@@ -64,7 +64,9 @@ interface WageRecord {
 
 const CreateWagesPage = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [wageData, setWageData] = useState<{[employeeId: string]: {hoursWorked: string; otherDeductions: string}}>({});
+  const [wageData, setWageData] = useState<{
+    [employeeId: string]: { hoursWorked: string; otherDeductions: string };
+  }>({});
   const {toast} = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: null,
@@ -97,8 +99,9 @@ const CreateWagesPage = () => {
 
   // Initialize wageData when employees are loaded
   useEffect(() => {
-    const initialWageData: {[employeeId: string]: {hoursWorked: string; otherDeductions: string}} =
-      {};
+    const initialWageData: {
+      [employeeId: string]: { hoursWorked: string; otherDeductions: string };
+    } = {};
     employees.forEach(employee => {
       initialWageData[employee.id] = {hoursWorked: '', otherDeductions: ''};
     });
