@@ -1,27 +1,23 @@
-
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // ⚠️ Only use this temporarily during development
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // ⚠️ Only use this temporarily during development
   },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
       },
     ],
   },
-  experimental: {
-    appDir: true,
-  },
+  // experimental: { // ❌ Remove in Next.js 13.4+
+  //   appDir: true, // This is now stable and enabled by default
+  // },
 };
 
 export default nextConfig;

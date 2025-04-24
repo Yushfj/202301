@@ -1,17 +1,16 @@
 'use client';
 
-import {useState, useEffect} from 'react';
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
+import { useState, useEffect, Suspense } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Image from 'next/image';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
-import {useToast} from '@/hooks/use-toast';
-import {useRouter, useSearchParams} from 'next/navigation';
-import { addEmployee, getEmployees, updateEmployee } from '@/services/employee-service';
-import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group';
-import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { updateEmployee, getEmployees } from '@/services/employee-service';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface Employee {
   id: string;
@@ -25,293 +24,250 @@ interface Employee {
   branch: 'labasa' | 'suva';
 }
 
-const ChangeEmployeeInfoPage = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const [name, setName] = useState('');
-  const [position, setPosition] = useState('');
-  const [hourlyWage, setHourlyWage] = useState('');
-  const [fnpfNo, setFnpfNo] = useState('');
-  const [bankCode, setBankCode] = useState('');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('cash');
-    const [branch, setBranch] = useState<'labasa' | 'suva'>('labasa');
-  const {toast} = useToast();
+// Ensure dynamic rendering
+export const dynamic = 'force-dynamic';
+
+const EmployeeFormContent = () => {
+  const searchParams = useSearchParams();
   const router = useRouter();
-    const searchParams = useSearchParams();
-
-    useEffect(() => {
-        const employeeIdFromParams = searchParams.get('id');
-        if (employeeIdFromParams) {
-            setSelectedEmployeeId(employeeIdFromParams);
-        }
-    }, [searchParams]);
-
+  const { toast } = useToast();
+  
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [formData, setFormData] = useState<Omit<Employee, 'id'>>({
+    name: '',
+    position: '',
+    hourlyWage: '',
+    fnpfNo: '',
+    bankCode: '',
+    bankAccountNumber: '',
+    paymentMethod: 'cash',
+    branch: 'labasa'
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const employeeData = await getEmployees();
+        setEmployees(employeeData);
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to fetch employees',
+          variant: 'destructive',
+        });
+      }
+    };
+
     fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const employeeData = await getEmployees();
-      setEmployees(employeeData);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to fetch employees.',
-        variant: 'destructive',
-      });
-    }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    // When a new employee is selected in the dropdown,
-    // populate the change forms with their current details.
-    if (selectedEmployeeId) {
-      const employeeToChange = employees.find(emp => emp.id === selectedEmployeeId);
-      if (employeeToChange) {
-        setName(employeeToChange.name);
-        setPosition(employeeToChange.position);
-        setHourlyWage(employeeToChange.hourlyWage);
-        setFnpfNo(employeeToChange.fnpfNo);
-        setBankCode(employeeToChange.bankCode);
-        setBankAccountNumber(employeeToChange.bankAccountNumber);
-        setPaymentMethod(employeeToChange.paymentMethod);
-          setBranch(employeeToChange.branch);
+    const employeeId = searchParams.get('id');
+    if (employeeId) {
+      setSelectedEmployeeId(employeeId);
+      const employee = employees.find(emp => emp.id === employeeId);
+      if (employee) {
+        const { id, ...employeeData } = employee;
+        setFormData(employeeData);
       }
     }
-  }, [selectedEmployeeId, employees]);
+  }, [searchParams, employees]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-    // Basic validation
-    if (!name || !position || !hourlyWage || !fnpfNo) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all fields.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (paymentMethod === 'online' && (!bankCode || !bankAccountNumber)) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in Bank Code and Account Number for online transfer.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
-      const updatedEmployee: Employee = {
-        id: selectedEmployeeId,
-        name,
-        position,
-        hourlyWage,
-        fnpfNo,
-        bankCode,
-        bankAccountNumber,
-        paymentMethod,
-          branch,
-      };
+      if (!formData.name || !formData.position || !formData.hourlyWage || !formData.fnpfNo) {
+        throw new Error('Please fill in all required fields');
+      }
 
-      // Update the employee using the service function
-      await updateEmployee(updatedEmployee);
+      if (formData.paymentMethod === 'online' && (!formData.bankCode || !formData.bankAccountNumber)) {
+        throw new Error('Bank details required for online payments');
+      }
+
+      await updateEmployee({
+        id: selectedEmployeeId,
+        ...formData
+      });
 
       toast({
         title: 'Success',
-        description: 'Employee information updated successfully!',
+        description: 'Employee updated successfully',
       });
 
-      // Clear the form
-      setSelectedEmployeeId('');
-      setName('');
-      setPosition('');
-      setHourlyWage('');
-      setFnpfNo('');
-      setBankCode('');
-      setBankAccountNumber('');
-      setPaymentMethod('cash');
-        setBranch('labasa');
-
-      // Redirect to employee information page to see the updated info
       router.push('/employees/information');
-
-      // Refresh the employee list
-      fetchEmployees();
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update employee information.',
+        description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="relative flex items-center justify-center min-h-screen">
-      {/* Background Image */}
-      <Image
-        src="https://picsum.photos/1920/1080"
-        alt="Lal's Motor Winders Background"
-        fill
-        style={{objectFit: 'cover'}}
-        className="absolute top-0 left-0 w-full h-full -z-10"
-      />
+    <Card className="w-full max-w-md bg-transparent backdrop-blur-md shadow-lg rounded-lg border border-accent/40">
+      <CardHeader>
+        <CardTitle className="text-2xl text-white text-center">
+          Change Employee Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-2">
+            <Label htmlFor="employee" className="text-white">
+              Select Employee
+            </Label>
+            <Select
+              value={selectedEmployeeId}
+              onValueChange={setSelectedEmployeeId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map(employee => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Overlay for better readability */}
-      <div className="absolute top-0 left-0 w-full h-full bg-black opacity-50 -z-9" />
-
-      {/* Content */}
-      <Card className="w-full max-w-md bg-transparent backdrop-blur-md shadow-lg rounded-lg border border-accent/40">
-        <CardHeader>
-          <CardTitle className="text-2xl text-white text-center">
-            Change Employee Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-2">
-              <Label htmlFor="employee" className="text-white">
-                Select Employee
-              </Label>
-              <Select
-                onValueChange={setSelectedEmployeeId}
-                  defaultValue={selectedEmployeeId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-              {/* Branch Selection */}
-              <div className="grid gap-2">
-                  <Label className="text-white">Select Branch</Label>
-                  <RadioGroup onValueChange={(value) => setBranch(value === 'labasa' ? 'labasa' : 'suva')} defaultValue={branch}>
-                      <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="labasa" id="r3" />
-                          <Label htmlFor="r3" className="text-white">Labasa Branch</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="suva" id="r4" />
-                          <Label htmlFor="r4" className="text-white">Suva Branch</Label>
-                      </div>
-                  </RadioGroup>
+          <div className="grid gap-2">
+            <Label className="text-white">Branch</Label>
+            <RadioGroup 
+              value={formData.branch} 
+              onValueChange={v => handleChange('branch', v as 'labasa' | 'suva')}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="labasa" id="labasa" />
+                <Label htmlFor="labasa" className="text-white">Labasa</Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="suva" id="suva" />
+                <Label htmlFor="suva" className="text-white">Suva</Label>
+              </div>
+            </RadioGroup>
+          </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="name" className="text-white">
-                Employee Name
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Employee Name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="position" className="text-white">
-                Employee Position
-              </Label>
-              <Input
-                id="position"
-                type="text"
-                placeholder="Employee Position"
-                value={position}
-                onChange={e => setPosition(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="hourlyWage" className="text-white">
-                Hourly Wage
-              </Label>
-              <Input
-                id="hourlyWage"
-                type="number"
-                placeholder="Hourly Wage"
-                value={hourlyWage}
-                onChange={e => setHourlyWage(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="fnpfNo" className="text-white">
-                FNPF No
-              </Label>
-              <Input
-                id="fnpfNo"
-                type="text"
-                placeholder="FNPF No"
-                value={fnpfNo}
-                onChange={e => setFnpfNo(e.target.value)}
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="name" className="text-white">Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={e => handleChange('name', e.target.value)}
+            />
+          </div>
 
-             {/* Payment Method Selection */}
-             <div className="grid gap-2">
-              <Label className="text-white">Payment Method</Label>
-              <RadioGroup onValueChange={(value) => setPaymentMethod(value === 'cash' ? 'cash' : 'online')} defaultValue={paymentMethod}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cash" id="r1" />
-                  <Label htmlFor="r1" className="text-white">Cash Wages</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="online" id="r2" />
-                  <Label htmlFor="r2" className="text-white">Online Transfer</Label>
-                </div>
-              </RadioGroup>
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="position" className="text-white">Position</Label>
+            <Input
+              id="position"
+              value={formData.position}
+              onChange={e => handleChange('position', e.target.value)}
+            />
+          </div>
 
-            {paymentMethod === 'online' && (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="bankCode" className="text-white">
-                    Bank Code
-                  </Label>
-                  <Input
-                    id="bankCode"
-                    type="text"
-                    placeholder="Bank Code"
-                    value={bankCode}
-                    onChange={e => setBankCode(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="bankAccountNumber" className="text-white">
-                    Bank Account Number
-                  </Label>
-                  <Input
-                    id="bankAccountNumber"
-                    type="text"
-                    placeholder="Bank Account Number"
-                    value={bankAccountNumber}
-                    onChange={e => setBankAccountNumber(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
+          <div className="grid gap-2">
+            <Label htmlFor="hourlyWage" className="text-white">Hourly Wage</Label>
+            <Input
+              id="hourlyWage"
+              type="number"
+              value={formData.hourlyWage}
+              onChange={e => handleChange('hourlyWage', e.target.value)}
+            />
+          </div>
 
-            <Button className="w-full mt-6" type="submit" variant="gradient">
-              Update Employee Information
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="fnpfNo" className="text-white">FNPF Number</Label>
+            <Input
+              id="fnpfNo"
+              value={formData.fnpfNo}
+              onChange={e => handleChange('fnpfNo', e.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label className="text-white">Payment Method</Label>
+            <RadioGroup
+              value={formData.paymentMethod}
+              onValueChange={v => handleChange('paymentMethod', v as 'cash' | 'online')}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="cash" id="cash" />
+                <Label htmlFor="cash" className="text-white">Cash</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="online" id="online" />
+                <Label htmlFor="online" className="text-white">Online</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {formData.paymentMethod === 'online' && (
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor="bankCode" className="text-white">Bank Code</Label>
+                <Input
+                  id="bankCode"
+                  value={formData.bankCode}
+                  onChange={e => handleChange('bankCode', e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="accountNumber" className="text-white">Account Number</Label>
+                <Input
+                  id="accountNumber"
+                  value={formData.bankAccountNumber}
+                  onChange={e => handleChange('bankAccountNumber', e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          <Button 
+            type="submit" 
+            className="w-full mt-4"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Updating...' : 'Update Employee'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
-export default ChangeEmployeeInfoPage;
+export default function ChangeEmployeeInfoPage() {
+  return (
+    <div className="relative flex items-center justify-center min-h-screen">
+      <Image
+        src="https://picsum.photos/1920/1080"
+        alt="Background"
+        fill
+        priority
+        className="absolute top-0 left-0 w-full h-full -z-10 object-cover"
+      />
+      <div className="absolute top-0 left-0 w-full h-full bg-black opacity-50 -z-9" />
+      
+      <Suspense fallback={
+        <div className="text-white text-lg p-8 bg-black/50 rounded-lg">
+          Loading employee data...
+        </div>
+      }>
+        <EmployeeFormContent />
+      </Suspense>
+    </div>
+  );
+}
